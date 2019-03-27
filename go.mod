@@ -1,4 +1,4 @@
-module github.homedepot.com/COM-SRE/flop
+module github.com/homedepot/flop
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
