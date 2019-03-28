@@ -346,14 +346,15 @@ func backupFile(file *File, control string, opts Options) error {
 		}
 		return numbered(i)
 	case "existing":
-		if i, err := next(); err != nil {
+		i, err := next()
+		if err != nil {
 			return err
-		} else {
-			if i > 1 {
-				return numbered(i)
-			}
-			return simple()
 		}
+
+		if i > 1 {
+			return numbered(i)
+		}
+		return simple()
 	}
 }
 
