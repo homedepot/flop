@@ -3,7 +3,7 @@
 First off, thank you for considering contributing to this repository! This resource is a very simple project, but has plenty of room for improvement.
 
 If you're just looking for quick feedback for an idea or proposal, feel free to open an
-[issue](https://github.com/homedepot/k8s_prometheus_operator/issues/new).
+[issue](https://github.com/homedepot/flop/issues/new).
 
 Follow the [contribution workflow](#contribution-workflow) for submitting your
 changes. If you want to receive high-level but still
@@ -15,8 +15,8 @@ commit-based feedback for a contribution, follow the
 This project uses the “fork-and-pull” development model. Follow these steps if
 you want to merge your changes into the project:
 
-1. Within your fork of the
-   [k8s_prometheus_operator](https://github.com/homedepot/k8s_prometheus_operator), create a
+1. Within your fork of
+   [flop](https://github.com/homedepot/flop), create a
    branch for your contribution. Use a meaningful name.
 2. Create your contribution, meeting all
    [contribution quality standards](#contribution-quality-standards)
@@ -25,7 +25,7 @@ you want to merge your changes into the project:
 4. Add a reviewer to your pull request. Work with your reviewer to address any comments and obtain an approval.
    To update your pull request amend existing commits whenever applicable and
    then push the new changes to your pull request branch.
-5. Once the pull request is approved, one of the [maintainers](MAINTAINERS.md). will merge it.
+5. Once the pull request is approved, one of the maintainers will merge it.
 
 ## Contribution Quality Standards
 
@@ -37,3 +37,4 @@ Your contribution needs to meet the following standards:
 - Document your pull requests. Include the reasoning behind each change, and
   the testing done.
 - To the extent possible, follow existing code and documentation style and practices.
+
