@@ -303,10 +303,7 @@ func backupFile(file *File, control string, opts Options) error {
 	simple := func() error {
 		bkp := file.Path + "~"
 		opts.logDebug("creating simple backup file %s", bkp)
-		if err := Copy(file.Path, bkp, opts); err != nil {
-			return err
-		}
-		return nil
+		return Copy(file.Path, bkp, opts)
 	}
 
 	// next gives the next unused backup file number, 1 above the current highest
