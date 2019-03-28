@@ -13,7 +13,7 @@ var (
 	ErrCannotChmodFile = errors.New("cannot change permissions on file")
 	// ErrCannotCreateTmpFile occurs when an error is received attempting to create a temporary file for atomic copy.
 	ErrCannotCreateTmpFile = errors.New("temp file cannot be created")
-	// ErrCannotCreateTmpFile occurs when an error is received attempting to open or create destination file during non-atomic copy.
+	// ErrCannotOpenOrCreateDstFile occurs when an error is received attempting to open or create destination file during non-atomic copy.
 	ErrCannotOpenOrCreateDstFile = errors.New("destination file cannot be created")
 	// ErrCannotRenameTempFile occurs when an error is received trying to rename the temporary copy file to the destination.
 	ErrCannotRenameTempFile = errors.New("cannot rename temp file, check file or directory permissions")
