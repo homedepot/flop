@@ -1,3 +1,4 @@
+[![GoDoc](https://godoc.org/github.com/homedepot/flop?status.svg)](https://godoc.org/github.com/homedepot/flop)
 [![Go Report Card](https://goreportcard.com/badge/github.com/homedepot/flop)](https://goreportcard.com/report/github.com/homedepot/flop)
 
 # flop
