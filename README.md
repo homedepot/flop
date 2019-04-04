@@ -20,7 +20,7 @@ err := flop.SimpleCopy("src_path", "dst_path")
 handle(err)
 ```
 
-Advanced file copy with options.
+Advanced file copy with [options](https://godoc.org/github.com/homedepot/flop#Options).
 ```go
 options := flop.Options{
     Recursive: true,
