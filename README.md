@@ -1,5 +1,6 @@
 [![GoDoc](https://godoc.org/github.com/homedepot/flop?status.svg)](https://godoc.org/github.com/homedepot/flop)
 [![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Awesome](https://cdn.rawgit.com/sindresorhus/awesome/d7305f38d29fed78fa85652e3a63e154dd8e8829/media/badge.svg)]
 [![Go Report Card](https://goreportcard.com/badge/github.com/homedepot/flop)](https://goreportcard.com/report/github.com/homedepot/flop)
 
 # flop
