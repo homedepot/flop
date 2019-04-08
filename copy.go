@@ -120,7 +120,7 @@ func Copy(src, dst string, opts Options) (err error) {
 	}
 
 	if opts.Parents {
-		if dstFile.existOnInit && !dstFile.isDir {
+		if !dstFile.IsDir() {
 			return ErrWithParentsDstMustBeDir
 		}
 		// TODO: figure out how to handle windows paths where they reference the full path like c:/dir
