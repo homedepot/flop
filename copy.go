@@ -22,9 +22,12 @@ func SimpleCopy(src, dst string) error {
 }
 
 // compatibleOptions returns an appropriate error if options are not compatible.
-func compatibleOptions(src, dst string, opts Options) error {
+func compatibleOptions(srcFile, dstFile File, opts Options) error {
 	if opts.Parents && opts.AppendNameToPath {
 		return errors.Wrapf(ErrIncompatibleOptions, "Parents and AppendNameToPath are incompatible, destination must be a directory")
+	}
+	if opts.Parents && !dstFile.IsDir() {
+		return ErrWithParentsDstMustBeDir
 	}
 	return nil
 }
@@ -32,9 +35,9 @@ func compatibleOptions(src, dst string, opts Options) error {
 // Copy will copy src to dst.  Behavior is determined by the given Options.
 func Copy(src, dst string, opts Options) (err error) {
 	opts.setLoggers()
-	srcFile, dstFile := NewFile(filepath.Clean(src)), NewFile(filepath.Clean(dst))
+	srcFile, dstFile := *NewFile(filepath.Clean(src)), *NewFile(filepath.Clean(dst))
 
-	if err := compatibleOptions(src, dst, opts); err != nil {
+	if err := compatibleOptions(srcFile, dstFile, opts); err != nil {
 		return err
 	}
 
@@ -54,9 +57,6 @@ func Copy(src, dst string, opts Options) (err error) {
 	// TODO Proposed end
 
 	if opts.Parents { // TODO: why are we handling parents here if we just checked for parents and set mkdirAll above?
-		if !dstFile.IsDir() {
-			return ErrWithParentsDstMustBeDir
-		}
 		// TODO: figure out how to handle windows paths where they reference the full path like c:/dir
 		dstFile.Path = filepath.Join(dstFile.Path, srcFile.Path)
 		opts.logDebug("because of Parents option, dst Path has been set to to %s", dstFile.Path)
@@ -88,13 +88,13 @@ func Copy(src, dst string, opts Options) (err error) {
 }
 
 // hardLink creates a hard link to src at dst.
-func hardLink(src, dst *File, logFunc func(format string, a ...interface{})) error {
+func hardLink(src, dst File, logFunc func(format string, a ...interface{})) error {
 	logFunc("creating hard link to src %s at dst %s", src.Path, dst.Path)
 	return os.Link(src.Path, dst.Path)
 }
 
 // copyLink copies a symbolic link from src to dst.
-func copyLink(src, dst *File, logFunc func(format string, a ...interface{})) error {
+func copyLink(src, dst File, logFunc func(format string, a ...interface{})) error {
 	logFunc("copying sym link %s to %s", src.Path, dst.Path)
 	linkSrc, err := os.Readlink(src.Path)
 	if err != nil {
@@ -103,7 +103,7 @@ func copyLink(src, dst *File, logFunc func(format string, a ...interface{})) err
 	return os.Symlink(linkSrc, dst.Path)
 }
 
-func copyDir(srcFile, dstFile *File, opts Options) error {
+func copyDir(srcFile, dstFile File, opts Options) error {
 	if !opts.Recursive {
 		return errors.Wrapf(ErrOmittingDir, "source directory %s", srcFile.Path)
 	}
@@ -130,7 +130,7 @@ func copyDir(srcFile, dstFile *File, opts Options) error {
 	return nil
 }
 
-func copyFile(srcFile, dstFile *File, opts Options) (err error) {
+func copyFile(srcFile, dstFile File, opts Options) (err error) {
 	// shortcut if files are the same file
 	if os.SameFile(srcFile.FileInfo(), dstFile.FileInfo()) {
 		opts.logDebug("src %s is same file as dst %s", srcFile.Path, dstFile.Path)
@@ -225,7 +225,7 @@ func copyFile(srcFile, dstFile *File, opts Options) (err error) {
 }
 
 // backupFile will create a backup of the file using the chosen control method.  See Options.Backup.
-func backupFile(file *File, control string, opts Options) error {
+func backupFile(file File, control string, opts Options) error {
 	// TODO: this func could be more efficient if it used file instead of the path but right now this causes panic
 	// do not copy if the file did not exist
 	if !file.Exists() {
