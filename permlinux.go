@@ -8,7 +8,7 @@ import (
 )
 
 // ensurePermissions will set file level permissions on dst based on options and other criteria.
-func ensurePermissions(dstFile *File, srcMode os.FileMode, opts Options) error {
+func ensurePermissions(dstFile File, srcMode os.FileMode, opts Options) error {
 	var mode os.FileMode
 	if fi, err := os.Stat(dstFile.Path); err != nil {
 		return err
