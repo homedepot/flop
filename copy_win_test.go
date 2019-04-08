@@ -9,30 +9,6 @@ import (
 	"testing"
 )
 
-func TestForPresenceOfFileCopyErrors(t *testing.T) {
-	assert := assert.New(t)
-	tests := []struct {
-		name                 string
-		copyFunc             func(string, os.FileInfo, string, os.FileInfo) error
-		inFile               string
-		outFile              string
-		errSubstringExpected string
-	}{
-		{
-			name:                 "src_path_which_cannot_be_opened",
-			inFile:               "////",
-			outFile:              tmpFile(),
-			errSubstringExpected: ErrCannotStatFile.Error(),
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			err := SimpleCopy(tt.inFile, tt.outFile)
-			assert.True(errContains(err, tt.errSubstringExpected))
-		})
-	}
-}
-
 func TestFileCopyOnDstWithInvalidPermissionsReturnsAccessError(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
@@ -59,6 +35,25 @@ func TestFileCopyOnDstWithInvalidPermissionsReturnsAccessError(t *testing.T) {
 
 			// change perms back to ensure we can read to verify content
 			assert.Nil(os.Chmod(dst, 0655))
+		})
+	}
+}
+
+// ensure that we are properly cleaning file paths before use
+func TestCleaningWindowsFilePaths(t *testing.T) {
+	assert := assert.New(t)
+	tests := []struct {
+		name string
+		in   string
+		out  string
+	}{
+		{"src_trailing_back_slashes", tmpFile() + "\\\\\\\\", tmpFile()},
+		{"dst_trailing_back_slashes", tmpFile(), tmpFile() + "\\\\\\\\"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Nil(SimpleCopy(tt.in, tt.out))
 		})
 	}
 }

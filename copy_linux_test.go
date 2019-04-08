@@ -10,6 +10,27 @@ import (
 	"testing"
 )
 
+// TODO: it's difficult to create paths that we do not have access to. revisit this.
+//func TestFileExistsReturnsFalseWhenPermissionDenied(t *testing.T) {
+//	assert := assert.New(t)
+//	tmpDir, err := ioutil.TempDir("", "")
+//	assert.Nil(err)
+//	unreachableDir := filepath.Join(tmpDir, "unreachable")
+//	unreachableFile := filepath.Join(unreachableDir, "file.txt")
+//	os.Mkdir(unreachableDir, 0777)
+//	ioutil.WriteFile(unreachableFile, []byte("foo"), 0777)
+//	assert.Nil(os.Chown(unreachableDir, 0, 0))
+//	assert.Nil(os.Chmod(unreachableDir, 0700))
+//
+//	u, err := user.Current()
+//	assert.Nil(err)
+//	assert.NotEqual("0", u.Uid, "it looks like you are running as UID 0, which breaks tests designed to find permission errors.. don't do that please")
+//
+//	f, err := ioutil.ReadDir(tmpDir)
+//	assert.Nil(err)
+//	fmt.Println(f[0])
+//}
+
 func TestFileCopyOnDstWithInvalidPermissionsReturnsNoErrorWhenAtomic(t *testing.T) {
 	assert := assert.New(t)
 	// create and write to source inFile
@@ -42,8 +63,8 @@ func TestFileIsSymlink(t *testing.T) {
 	newFileInfo, err := os.Lstat(new)
 	assert.Nil(err)
 	f := File{
-		Path:           new,
-		fileInfoOnInit: newFileInfo,
+		Path:     new,
+		fileInfo: &newFileInfo,
 	}
 	assert.True(f.isSymlink())
 }
@@ -52,7 +73,6 @@ func TestIsSymlinkFailsWithRegularFile(t *testing.T) {
 	assert := assert.New(t)
 	tmp := tmpFile()
 	f := NewFile(tmp)
-	f.setInfo()
 	assert.False(f.isSymlink())
 }
 

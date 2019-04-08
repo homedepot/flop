@@ -7,24 +7,24 @@ import (
 	"os"
 )
 
-// setPermissions will set file level permissions on dst based on options and other criteria.
-func setPermissions(dstFile *File, srcMode os.FileMode, opts Options) error {
+// ensurePermissions will set file level permissions on dst based on options and other criteria.
+func ensurePermissions(dstFile *File, srcMode os.FileMode, opts Options) error {
 	var mode os.FileMode
-	fi, err := os.Stat(dstFile.Path)
-	if err != nil {
+	if fi, err := os.Stat(dstFile.Path); err != nil {
 		return err
+	} else {
+		mode = fi.Mode()
 	}
-	mode = fi.Mode()
 
-	if dstFile.existOnInit {
-		if mode == dstFile.fileInfoOnInit.Mode() {
+	if dstFile.Exists() {
+		if mode == dstFile.Mode() {
 			opts.logDebug("existing dst %s permissions %s are unchanged", dstFile.Path, mode)
 			return nil
 		}
 
 		// make sure dst perms are set to their original value
-		opts.logDebug("changing dst %s permissions to %s", dstFile.Path, dstFile.fileInfoOnInit.Mode())
-		err := os.Chmod(dstFile.Path, dstFile.fileInfoOnInit.Mode())
+		opts.logDebug("changing dst %s permissions to %s", dstFile.Path, dstFile.Mode())
+		err := os.Chmod(dstFile.Path, dstFile.Mode())
 		if err != nil {
 			return errors.Wrapf(ErrCannotChmodFile, "destination file %s: %s", dstFile.Path, err)
 		}

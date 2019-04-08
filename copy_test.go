@@ -38,16 +38,8 @@ func TestFileContentInCopy(t *testing.T) {
 		inFile  string
 		outFile string
 	}{
-		//{
-		//	name:    "basic_file_copy",
-		//	inFile:  tmpFile(),
-		//	outFile: tmpFile(),
-		//},
-		{
-			name:    "unused_dst_file_path",
-			inFile:  tmpFile(),
-			outFile: tmpFilePathUnused(),
-		},
+		{name: "basic_file_copy", inFile: tmpFile(), outFile: tmpFile()},
+		{name: "unused_dst_file_path", inFile: tmpFile(), outFile: tmpFilePathUnused()},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -90,12 +82,11 @@ func TestErrorsInCopy(t *testing.T) {
 			errExpected: false,
 		},
 		{
-			name:        "dst_path_which_cannot_be_opened_or_created",
-			inFile:      tmpFile(),
-			outFile:     "/path/that/is/inaccessible",
-			errExpected: true,
-			options:     Options{Atomic: false},
-			//errSubstringExpected: ErrCannotOpenOrCreateDstFile.Error(),
+			name:                 "dst_path_which_cannot_be_opened_or_created",
+			inFile:               tmpFile(),
+			outFile:              "/path/that/is/inaccessible",
+			errExpected:          true,
+			errSubstringExpected: ErrCannotOpenOrCreateDstFile.Error(),
 		},
 		{
 			name:                 "atomic_dst_path_which_cannot_be_opened_or_created",
@@ -195,18 +186,8 @@ func TestCopySrcFileToDstDir(t *testing.T) {
 		errExpected          bool
 		errSubstringExpected string
 	}{
-		{
-			name:    "auto_write_files_to_dirs",
-			dst:     tmpDirPath(),
-			options: Options{AppendNameToPath: true},
-		},
-		{
-			name:                 "auto_write_files_to_dirs",
-			dst:                  tmpDirPath(),
-			options:              Options{AppendNameToPath: false},
-			errExpected:          true,
-			errSubstringExpected: ErrWritingFileToExistingDir.Error(),
-		},
+		{name: "auto_write_files_to_dirs", dst: tmpDirPath(), options: Options{AppendNameToPath: true}},
+		{name: "auto_write_files_to_dirs", dst: tmpDirPath(), options: Options{AppendNameToPath: false}, errExpected: true, errSubstringExpected: ErrWritingFileToExistingDir.Error()},
 	}
 
 	for _, tt := range tests {
@@ -298,86 +279,109 @@ func TestCopyingDirToDirWhenDstContainsTrailingSlash(t *testing.T) {
 	}
 }
 
-func TestCopyingFileWithParentsFlagCreatesParentDirs(t *testing.T) {
+func TestCopyingFileWithParentsFlag(t *testing.T) {
 	assert := assert.New(t)
-	workDir := tmpDirPath()
-	err := os.Chdir(workDir)
-	assert.Nil(err)
 
-	// create nested path
-	nestedPath := "nested/path/"
-	assert.Nil(os.MkdirAll(nestedPath, 0777))
-
-	// make destination dir
-	dst := "dest"
-	assert.Nil(os.Mkdir(dst, 0777))
-
-	// make files with content
-	content := []byte("foo")
-	fileName := "nestedFile.txt"
-	nestedFile := filepath.Join(nestedPath, fileName)
-
-	// write content to file
-	assert.Nil(ioutil.WriteFile(nestedFile, content, 0655))
-
-	// ensure nested exists just to be sure
-	_, err = os.Open(nestedFile)
-	assert.False(os.IsNotExist(err))
-
-	assert.Nil(Copy(nestedFile, dst, Options{
-		Recursive:    true,
-		Parents:      true,
-		DebugLogFunc: debugLogger,
-		InfoLogFunc:  infoLogger,
-	}))
-
-	expectedFile := filepath.Join(dst, nestedPath, fileName)
-
-	// ensure the file exists where we expect it to
-	var exists bool
-	if _, err = os.Stat(expectedFile); !os.IsNotExist(err) {
-		exists = true
+	tests := []struct {
+		name    string
+		options Options
+		// should the src be a directory?
+		srcIsDir bool
+		// should the dst be a directory?
+		dstIsDir             bool
+		errSubstringExpected string
+	}{
+		{name: "src_file_dst_file_with_parents_option_errors", srcIsDir: false, dstIsDir: false, errSubstringExpected: ErrWithParentsDstMustBeDir.Error()},
+		{name: "src_dir_dst_file_with_parents_option_errors", srcIsDir: true, dstIsDir: false, errSubstringExpected: ErrWithParentsDstMustBeDir.Error()},
+		{name: "src_file_dst_dir", srcIsDir: false, dstIsDir: true},
+		{name: "src_file_dst_dir_with_append", srcIsDir: false, dstIsDir: true, options: Options{AppendNameToPath: true}, errSubstringExpected: ErrIncompatibleOptions.Error()},
 	}
-	assert.True(exists)
-}
 
-func TestCopyingDirWithParentsFlagCreatesParentDirs(t *testing.T) {
-	assert := assert.New(t)
-	workDir := tmpDirPath()
-	assert.Nil(os.Chdir(workDir))
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			workDir := tmpDirPath()
+			nestedPath := "nested/path/" // nested path in the local working dir
+			{
+				defer os.RemoveAll(workDir)
+				// move into working directory to start with a clean slate
+				err := os.Chdir(workDir)
+				assert.Nil(err)
 
-	nestedPath := "nested/path/"
-	assert.Nil(os.MkdirAll(nestedPath, 0777))
+				assert.Nil(os.MkdirAll(nestedPath, 0777))
+				defer os.RemoveAll(nestedPath)
+			}
 
-	// make destination dir
-	dst := "dest"
-	assert.Nil(os.Mkdir(dst, 0777))
+			// make files with content in nested path
+			content := []byte("foo")
+			fileName := "src.txt"
+			var src string
+			if tt.srcIsDir {
+				src = nestedPath
+				// write to file inside dir while maintaining nested dir as src
+				assert.Nil(ioutil.WriteFile(filepath.Join(src, fileName), content, 0655))
 
-	// make files with content
-	content := []byte("foo")
-	fileName := "nestedFile.txt"
-	nestedFile := filepath.Join(nestedPath, fileName)
+				// ensure nested exists just to be sure
+				f, err := os.Open(filepath.Join(src, fileName))
+				assert.Nil(err)
+				// ensure file exists
+				assert.False(os.IsNotExist(err))
+				assert.Nil(f.Close())
+			} else {
+				src = filepath.Join(nestedPath, fileName)
 
-	// write content to file
-	assert.Nil(ioutil.WriteFile(nestedFile, content, 0655))
+				// write content to file which we will verify later
+				assert.Nil(ioutil.WriteFile(src, content, 0655))
 
-	// ensure nested exists just to be sure
-	_, err := os.Open(nestedFile)
-	assert.False(os.IsNotExist(err))
+				// ensure nested exists just to be sure
+				f, err := os.Open(src)
+				assert.Nil(err)
+				// ensure file exists
+				assert.False(os.IsNotExist(err))
+				assert.Nil(f.Close())
+			}
 
-	assert.Nil(Copy(nestedPath, dst, Options{Recursive: true, Parents: true}))
+			var dst string
+			if tt.dstIsDir {
+				// make destination dir
+				dst = "dst"
+				assert.Nil(os.Mkdir(dst, 0777))
+				defer os.RemoveAll(dst)
 
-	expectedFile := filepath.Join(dst, nestedPath, fileName)
+			} else {
+				// make destination file
+				dst = filepath.Join(tmpDirPath(), "file.txt")
+			}
 
-	// ensure the file exists where we expect it to
-	var exists bool
-	if _, err = os.Stat(expectedFile); !os.IsNotExist(err) {
-		exists = true
+			// add required options to those given
+			{
+				tt.options.Parents = true
+				tt.options.Recursive = true
+				tt.options.DebugLogFunc = debugLogger
+				tt.options.InfoLogFunc = infoLogger
+			}
+
+			a, _ := filepath.Abs(dst)
+			fmt.Println("ABS:", a) // FIXME: testing
+			err := Copy(src, dst, tt.options)
+
+			// check the err from copy
+			if len(tt.errSubstringExpected) > 0 {
+				assert.True(errContains(err, tt.errSubstringExpected), fmt.Sprintf("err '%s' does not contain '%s'", err, tt.errSubstringExpected))
+				return
+			} else {
+				assert.Nil(err)
+			}
+
+			expectedFile := filepath.Join(dst, nestedPath, fileName)
+
+			// ensure the file exists where we expect it to
+			var exists bool
+			if _, err = os.Stat(expectedFile); !os.IsNotExist(err) {
+				exists = true
+			}
+			assert.True(exists)
+		})
 	}
-	assert.True(exists)
-	b, err := ioutil.ReadFile(expectedFile)
-	assert.Nil(err)
-	assert.Equal(content, b)
 }
 
 func TestNoClobberFile(t *testing.T) {

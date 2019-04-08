@@ -8,7 +8,7 @@ var (
 	// ErrCannotOpenSrc occurs when a src file cannot be opened with os.Open().
 	ErrCannotOpenSrc = errors.New("source file cannot be opened")
 	// ErrCannotStatFile occurs when a file receives an error from get os.Stat().
-	ErrCannotStatFile = errors.New("cannot stat file, check that file path is accessible")
+	ErrCannotStatFile = errors.New("cannot stat file, check that file path is accessible") // TODO: identify a location for this error or remove
 	// ErrCannotChmodFile occurs when an error is received trying to change permissions on a file.
 	ErrCannotChmodFile = errors.New("cannot change permissions on file")
 	// ErrCannotCreateTmpFile occurs when an error is received attempting to create a temporary file for atomic copy.
@@ -31,4 +31,6 @@ var (
 	ErrWritingFileToExistingDir = errors.New("cannot overwrite existing directory with file")
 	// ErrInvalidBackupControlValue occurs when a control value is given to the Backup option, but the value is invalid.
 	ErrInvalidBackupControlValue = errors.New("invalid backup value, valid values are 'off', 'simple', 'existing', 'numbered'")
+	// ErrIncompatibleOptions occurs when options are given that are not compatible with one another.
+	ErrIncompatibleOptions = errors.New("options given are incompatible")
 )

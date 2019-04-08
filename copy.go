@@ -16,84 +16,17 @@ import (
 // numberedBackupFile matches files that looks like file.ext.~1~ and uses a capture group to grab the number
 var numberedBackupFile = regexp.MustCompile(`^.*\.~([0-9]{1,5})~$`)
 
-// File describes a file and associated options for operations on the file.
-type File struct {
-	// Path is the path to the src file.
-	Path string
-	// fileInfoOnInit is os.FileInfo for file when initialized.
-	fileInfoOnInit os.FileInfo
-	// existOnInit is true if the file exists when initialized.
-	existOnInit bool
-	// isDir is true if the file object is a directory.
-	isDir bool
-}
-
-// NewFile creates a new File.
-func NewFile(path string) *File {
-	return &File{
-		Path: path,
-	}
-}
-
-// setInfo will collect information about a File and populate the necessary fields.
-func (f *File) setInfo() error {
-	info, err := os.Lstat(f.Path)
-	f.fileInfoOnInit = info
-	if err != nil {
-		if !os.IsNotExist(err) {
-			// if we are here then we have an error, but not one indicating the file does not exist
-			return err
-		}
-	} else {
-		f.existOnInit = true
-		if f.fileInfoOnInit.IsDir() {
-			f.isDir = true
-		}
-	}
-	return nil
-}
-
-func (f *File) isSymlink() bool {
-	if f.fileInfoOnInit.Mode()&os.ModeSymlink != 0 {
-		return true
-	}
-	return false
-}
-
-// shouldMakeParents returns true if we should make parent directories up to the dst
-func (f *File) shouldMakeParents(opts Options) bool {
-	if opts.MkdirAll || opts.mkdirAll {
-		return true
-	}
-
-	if opts.Parents {
-		return true
-	}
-
-	if f.existOnInit {
-		return false
-	}
-
-	parent := filepath.Dir(filepath.Clean(f.Path))
-	if _, err := os.Stat(parent); !os.IsNotExist(err) {
-		// dst does not exist but the direct parent does. make the target dir.
-		return true
-	}
-
-	return false
-}
-
-// shouldCopyParents returns true if parent directories from src should be copied into dst.
-func (f *File) shouldCopyParents(opts Options) bool {
-	if !opts.Parents {
-		return false
-	}
-	return true
-}
-
-// SimpleCopy will src to dst with default Options.
+// SimpleCopy copies src to dst with default Options.
 func SimpleCopy(src, dst string) error {
 	return Copy(src, dst, Options{})
+}
+
+// compatibleOptions returns an appropriate error if options are not compatible.
+func compatibleOptions(src, dst string, opts Options) error {
+	if opts.Parents && opts.AppendNameToPath {
+		return errors.Wrapf(ErrIncompatibleOptions, "Parents and AppendNameToPath are incompatible, destination must be a directory")
+	}
+	return nil
 }
 
 // Copy will copy src to dst.  Behavior is determined by the given Options.
@@ -101,39 +34,43 @@ func Copy(src, dst string, opts Options) (err error) {
 	opts.setLoggers()
 	srcFile, dstFile := NewFile(filepath.Clean(src)), NewFile(filepath.Clean(dst))
 
-	// set src attributes
-	if err := srcFile.setInfo(); err != nil {
-		return errors.Wrapf(ErrCannotStatFile, "source file %s: %s", srcFile.Path, err)
+	if err := compatibleOptions(src, dst, opts); err != nil {
+		return err
 	}
-	if !srcFile.existOnInit {
-		return errors.Wrapf(ErrFileNotExist, "source file %s", srcFile.Path)
-	}
-	opts.logDebug("src %s existOnInit: %t", srcFile.Path, srcFile.existOnInit)
 
-	// stat dst attributes. handle errors later
-	_ = dstFile.setInfo()
-	opts.logDebug("dst %s existOnInit: %t", dstFile.Path, dstFile.existOnInit)
+	if !srcFile.Exists() {
+		return errors.Wrapf(ErrFileNotExist, "src file %s", srcFile.Path)
+	}
+
+	opts.logDebug("dst %s exists: %t", dstFile.Path, dstFile.Exists())
 
 	if dstFile.shouldMakeParents(opts) {
 		opts.mkdirAll = true
-		opts.DebugLogFunc("dst mkdirAll: true")
+		opts.logDebug("dst mkdirAll: true")
 	}
 
-	if opts.Parents {
+	// TODO Proposed start for cyclomatic complexity reduction
+	//dstFile, err := handleParents(dstFile, opts)  // TODO: this name is terrible.  TODO: do we need opts at all?
+	// TODO Proposed end
+
+	if opts.Parents { // TODO: why are we handling parents here if we just checked for parents and set mkdirAll above?
 		if !dstFile.IsDir() {
 			return ErrWithParentsDstMustBeDir
 		}
 		// TODO: figure out how to handle windows paths where they reference the full path like c:/dir
 		dstFile.Path = filepath.Join(dstFile.Path, srcFile.Path)
-		opts.logDebug("because of Parents option, setting dst Path to %s", dstFile.Path)
+		opts.logDebug("because of Parents option, dst Path has been set to to %s", dstFile.Path)
+		// TODO: if we're setting fileInfo nil below so we need to do this?  if the next if block depends on this
+		// TODO: it should probably be handled a different way than just setting this.
 		dstFile.isDir = srcFile.isDir
+		// ensure we don't make decisions based on invalid data
+		dstFile.fileInfo = nil
 		opts.Parents = false // ensure we don't keep creating parents on recursive calls
 	}
 
-	// copying src directory requires dst is also a directory, if it existOnInit
-	if srcFile.isDir && dstFile.existOnInit && !dstFile.isDir {
-		return errors.Wrapf(
-			ErrCannotOverwriteNonDir, "source directory %s, destination file %s", srcFile.Path, dstFile.Path)
+	// copying src directory requires dst is also a directory, if exists
+	if srcFile.IsDir() && dstFile.Exists() && !dstFile.IsDir() {
+		return errors.Wrapf(ErrCannotOverwriteNonDir, "source directory %s, destination file %s", srcFile.Path, dstFile.Path)
 	}
 
 	// divide and conquer
@@ -143,7 +80,7 @@ func Copy(src, dst string, opts Options) (err error) {
 	case srcFile.isSymlink():
 		// FIXME: we really need to copy the pass through dest unless they specify otherwise...check the docs
 		return copyLink(srcFile, dstFile, opts.logDebug)
-	case srcFile.isDir:
+	case srcFile.IsDir():
 		return copyDir(srcFile, dstFile, opts)
 	default:
 		return copyFile(srcFile, dstFile, opts)
@@ -172,12 +109,12 @@ func copyDir(srcFile, dstFile *File, opts Options) error {
 	}
 	if opts.mkdirAll {
 		opts.logDebug("making all dirs up to %s", dstFile.Path)
-		if err := os.MkdirAll(dstFile.Path, srcFile.fileInfoOnInit.Mode()); err != nil {
+		if err := os.MkdirAll(dstFile.Path, srcFile.Mode()); err != nil {
 			return err
 		}
 	}
 
-	srcDirEntries, err := ioutil.ReadDir(srcFile.Path)
+	srcDirEntries, err := ioutil.ReadDir(srcFile.Path) // FIXME: this name could be more simple
 	if err != nil {
 		return errors.Wrapf(ErrReadingSrcDir, "source directory %s: %s", srcFile.Path, err)
 	}
@@ -186,11 +123,7 @@ func copyDir(srcFile, dstFile *File, opts Options) error {
 		newSrc := filepath.Join(srcFile.Path, entry.Name())
 		newDst := filepath.Join(dstFile.Path, entry.Name())
 		opts.logDebug("recursive cp with src %s and dst %s", newSrc, newDst)
-		if err := Copy(
-			newSrc,
-			newDst,
-			opts,
-		); err != nil {
+		if err := Copy(newSrc, newDst, opts); err != nil {
 			return err
 		}
 	}
@@ -199,7 +132,7 @@ func copyDir(srcFile, dstFile *File, opts Options) error {
 
 func copyFile(srcFile, dstFile *File, opts Options) (err error) {
 	// shortcut if files are the same file
-	if os.SameFile(srcFile.fileInfoOnInit, dstFile.fileInfoOnInit) {
+	if os.SameFile(srcFile.FileInfo(), dstFile.FileInfo()) {
 		opts.logDebug("src %s is same file as dst %s", srcFile.Path, dstFile.Path)
 		return nil
 	}
@@ -212,8 +145,8 @@ func copyFile(srcFile, dstFile *File, opts Options) (err error) {
 		}
 	}
 
-	if dstFile.existOnInit {
-		if dstFile.isDir {
+	if dstFile.Exists() {
+		if dstFile.IsDir() {
 			// optionally append src file name to dst dir like cp does
 			if opts.AppendNameToPath {
 				dstFile.Path = filepath.Join(dstFile.Path, filepath.Base(srcFile.Path))
@@ -256,7 +189,7 @@ func copyFile(srcFile, dstFile *File, opts Options) (err error) {
 		}
 		opts.logDebug("created tmp file %s", tmpFD.Name())
 
-		//copy src to tmp and cleanup on any error
+		// copy src to tmp and cleanup on any error
 		opts.logInfo("copying src file %s to tmp file %s", srcFD.Name(), tmpFD.Name())
 		if _, err := io.Copy(tmpFD, srcFD); err != nil {
 			return err
@@ -288,14 +221,14 @@ func copyFile(srcFile, dstFile *File, opts Options) (err error) {
 		}
 	}
 
-	return setPermissions(dstFile, srcFile.fileInfoOnInit.Mode(), opts)
+	return ensurePermissions(dstFile, srcFile.Mode(), opts)
 }
 
 // backupFile will create a backup of the file using the chosen control method.  See Options.Backup.
 func backupFile(file *File, control string, opts Options) error {
 	// TODO: this func could be more efficient if it used file instead of the path but right now this causes panic
 	// do not copy if the file did not exist
-	if !file.existOnInit {
+	if !file.Exists() {
 		return nil
 	}
 
