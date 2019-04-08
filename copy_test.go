@@ -13,6 +13,24 @@ import (
 // set to false to keep test results more terse
 const debug = true
 
+func TestFileExists(t *testing.T) {
+	assert := assert.New(t)
+	tests := []struct {
+		name        string
+		filePath    string
+		shouldExist bool
+	}{
+		{"exists", tmpFile(), true},
+		{"not_exists", tmpFilePathUnused(), false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			f := NewFile(tt.filePath)
+			assert.Equal(tt.shouldExist, f.Exists())
+		})
+	}
+}
+
 func TestFileContentInCopy(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
@@ -370,16 +388,8 @@ func TestNoClobberFile(t *testing.T) {
 		// do we expect the dst file to be overwritten?
 		expectOverwrite bool
 	}{
-		{
-			name:            "expect_clobber",
-			opts:            Options{NoClobber: false},
-			expectOverwrite: true,
-		},
-		{
-			name:            "basic_no_clobber",
-			opts:            Options{NoClobber: true},
-			expectOverwrite: false,
-		},
+		{name: "expect_clobber", opts: Options{NoClobber: false}, expectOverwrite: true},
+		{name: "basic_no_clobber", opts: Options{NoClobber: true}, expectOverwrite: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -539,6 +549,25 @@ func TestCreatingNumberedBackupFilesWhenBackupFilesAreNumbered(t *testing.T) {
 			b, err := ioutil.ReadFile(expectedBkpFile)
 			assert.Nil(err)
 			assert.Equal(content, b)
+		})
+	}
+}
+
+// ensure that we are properly cleaning file paths before use
+func TestCleaningFilePaths(t *testing.T) {
+	assert := assert.New(t)
+	tests := []struct {
+		name string
+		in   string
+		out  string
+	}{
+		{"src_trailing_forward_slashes", tmpFile() + "/////", tmpFile()},
+		{"dst_trailing_forward_slashes", tmpFile(), tmpFile() + "////////"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			assert.Nil(SimpleCopy(tt.in, tt.out))
 		})
 	}
 }
