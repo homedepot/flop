@@ -99,7 +99,7 @@ func SimpleCopy(src, dst string) error {
 // Copy will copy src to dst.  Behavior is determined by the given Options.
 func Copy(src, dst string, opts Options) (err error) {
 	opts.setLoggers()
-	srcFile, dstFile := NewFile(src), NewFile(dst)
+	srcFile, dstFile := NewFile(filepath.Clean(src)), NewFile(filepath.Clean(dst))
 
 	// set src attributes
 	if err := srcFile.setInfo(); err != nil {
