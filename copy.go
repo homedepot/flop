@@ -226,7 +226,6 @@ func copyFile(srcFile, dstFile File, opts Options) (err error) {
 
 // backupFile will create a backup of the file using the chosen control method.  See Options.Backup.
 func backupFile(file File, control string, opts Options) error {
-	// TODO: this func could be more efficient if it used file instead of the path but right now this causes panic
 	// do not copy if the file did not exist
 	if !file.Exists() {
 		return nil
