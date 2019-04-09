@@ -29,6 +29,21 @@ func compatibleOptions(srcFile, dstFile File, opts Options) error {
 	if opts.Parents && !dstFile.IsDir() {
 		return ErrWithParentsDstMustBeDir
 	}
+
+	// ensure given values for Preserve option are valid
+	supportedPreserveVals := []string{"mode", "all"}
+	for _, v := range opts.Preserve {
+		var matched bool
+		for _, supported := range supportedPreserveVals {
+			if v == supported {
+				matched = true
+			}
+		}
+		if !matched {
+			return errors.Wrapf(ErrInvalidPreserveValue, "given value %s is not supported", v)
+		}
+	}
+
 	return nil
 }
 

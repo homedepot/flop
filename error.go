@@ -31,6 +31,8 @@ var (
 	ErrWritingFileToExistingDir = errors.New("cannot overwrite existing directory with file")
 	// ErrInvalidBackupControlValue occurs when a control value is given to the Backup option, but the value is invalid.
 	ErrInvalidBackupControlValue = errors.New("invalid backup value, valid values are 'off', 'simple', 'existing', 'numbered'")
+	// ErrInvalidPreserveValue occurs when a value is given to the Preserve option, but the option is invalid.
+	ErrInvalidPreserveValue = errors.New("invalid preserve value")
 	// ErrIncompatibleOptions occurs when options are given that are not compatible with one another.
 	ErrIncompatibleOptions = errors.New("options given are incompatible")
 )

@@ -79,29 +79,24 @@ func TestIsSymlinkFailsWithRegularFile(t *testing.T) {
 func TestPermissionsAfterCopy(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
-		name             string
-		atomic           bool
+		name string
+		// if dst should exist we'll create it and assign expectedDstPerms to it
 		dstShouldExist   bool
 		srcPerms         os.FileMode
 		expectedDstPerms os.FileMode
+		options          Options
 	}{
 		{
-			name:             "preserve_src_perms_when_dst_not_exist_0655",
+			name:             "dst_not_exist_0655",
 			dstShouldExist:   false,
 			srcPerms:         os.FileMode(0655),
 			expectedDstPerms: os.FileMode(0655),
 		},
 		{
-			name:             "preserve_src_perms_when_dst_not_exist_0777",
+			name:             "dst_not_exist_0777",
 			dstShouldExist:   false,
 			srcPerms:         os.FileMode(0777),
 			expectedDstPerms: os.FileMode(0777),
-		},
-		{
-			name:             "preserve_src_perms_when_dst_not_exist_0741",
-			dstShouldExist:   false,
-			srcPerms:         os.FileMode(0741),
-			expectedDstPerms: os.FileMode(0741),
 		},
 		{
 			name:             "preserve_dst_perms_when_dst_exists_0654",
@@ -114,19 +109,6 @@ func TestPermissionsAfterCopy(t *testing.T) {
 			dstShouldExist:   true,
 			srcPerms:         os.FileMode(0655),
 			expectedDstPerms: os.FileMode(0651),
-		},
-		{
-			name:             "preserve_dst_perms_when_dst_exists_0777",
-			dstShouldExist:   true,
-			srcPerms:         os.FileMode(0655),
-			expectedDstPerms: os.FileMode(0777),
-		},
-		{
-			name:             "preserve_dst_perms_when_dst_exists_0666",
-			atomic:           false,
-			dstShouldExist:   true,
-			srcPerms:         os.FileMode(0655),
-			expectedDstPerms: os.FileMode(0666),
 		},
 	}
 
@@ -143,17 +125,92 @@ func TestPermissionsAfterCopy(t *testing.T) {
 				dst = tmpFilePathUnused()
 			}
 
-			assert.Nil(Copy(src, dst, Options{
-				Atomic:       tt.atomic,
-				InfoLogFunc:  infoLogger,
-				DebugLogFunc: debugLogger,
-			}), "name: %s", tt.name)
+			// set default options
+			tt.options.InfoLogFunc = infoLogger
+			tt.options.DebugLogFunc = debugLogger
+
+			// copy
+			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
 
 			// check our perms
 			d, err := os.Stat(dst)
 			assert.Nil(err)
 			dstPerms := d.Mode()
 			assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms))
+		})
+	}
+}
+
+func TestPermissionsAfterCopyWithPreserveOptions(t *testing.T) {
+	assert := assert.New(t)
+	tests := []struct {
+		name             string
+		srcPerms         os.FileMode
+		initDstPerms     os.FileMode
+		expectedDstPerms os.FileMode
+		options          Options
+	}{
+		{
+			name:             "preserve_mode_0655",
+			srcPerms:         os.FileMode(0655),
+			initDstPerms:     os.FileMode(0644),
+			expectedDstPerms: os.FileMode(0655),
+			options:          Options{Preserve: []string{"mode"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var src, dst string
+			{
+				src = tmpFile()
+				assert.Nil(os.Chmod(src, tt.srcPerms))
+				dst = tmpFile()
+				assert.Nil(os.Chmod(dst, tt.initDstPerms))
+			}
+
+			// set default options
+			tt.options.InfoLogFunc = infoLogger
+			tt.options.DebugLogFunc = debugLogger
+
+			// copy
+			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
+
+			// check our perms
+			d, err := os.Stat(dst)
+			assert.Nil(err)
+			dstPerms := d.Mode()
+			assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms))
+		})
+	}
+}
+
+func TestPreserveOptionErrors(t *testing.T) {
+	assert := assert.New(t)
+	tests := []struct {
+		preserveValues       []string
+		errSubstringExpected string
+		// since we give the bad value in the error, ensure we are giving the correct one
+		badValExpected string
+	}{
+		{[]string{"mode"}, "", ""},
+		{[]string{"all"}, "", ""},
+		{[]string{"all", "mode"}, "", ""}, // only "all" will apply, but still a valid entry
+		{[]string{"modes"}, ErrInvalidPreserveValue.Error(), "modes"},
+		{[]string{"mode", "invalid"}, ErrInvalidPreserveValue.Error(), "invalid"},
+		{[]string{"invalid", "mode"}, ErrInvalidPreserveValue.Error(), "invalid"},
+	}
+
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s", tt.preserveValues), func(t *testing.T) {
+			src, dst := tmpFile(), tmpFile()
+			err := Copy(src, dst, Options{Preserve: tt.preserveValues})
+			if len(tt.errSubstringExpected) > 0 {
+				assert.True(errContains(err, tt.errSubstringExpected), fmt.Sprintf("err '%s' does not contain '%s'", err, tt.errSubstringExpected))
+				assert.True(errContains(err, tt.badValExpected))
+			} else {
+				assert.Nil(err)
+			}
 		})
 	}
 }

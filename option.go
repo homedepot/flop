@@ -30,6 +30,17 @@ type Options struct {
 	// Parents will create source directories in dst if they do not already exist. ErrWithParentsDstMustBeDir
 	// is returned is destination is not a directory.
 	Parents bool
+	// Preserve the specified attributes.
+	// accepted slice values are:
+	//   - future support: "default"     equivalent to []string{"mode", "ownership", "timestamps"}
+	//   - "mode"        preserve the file mode bits and access control lists
+	//   - future support: "ownership"   preserve the owner and group if permissions allow
+	//   - future support: "timestamps"  preserve times of last access and last modification, when possible
+	//   - future support: "context"  preserve SELinux contexts
+	//   - future support: "links"    this
+	//   - future support: "xattr"    preserve extended attributes of the file
+	//   - "all"         preserve all supported attributes
+	Preserve []string
 	// Recursive will recurse through sub directories if set true.
 	Recursive bool
 	// InfoLogFunc will, if defined, handle logging info messages.
