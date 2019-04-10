@@ -28,8 +28,9 @@ handle(err)
 
 ### Operating Systems Support
 flop was built to work on *nix and Windows systems.  The behavior should be consistent across all platforms with the
-exception of permissions.  flop makes no guarantees related to permissions on Windows based systems so handle those
-yourself.
+exception of permissions.  On Windows based systems flop makes no guarantees related to file permissions, ownership,
+timestamps, contexts, links, or extended attributes.  These will need to be handled explicitly by the caller, if
+applicable, after copy operations are complete.
 
 ### Logging
 flop won't throw logs at you for no reason, but if you want to follow along with what's going on giving it a logger
