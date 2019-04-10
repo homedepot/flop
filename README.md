@@ -7,6 +7,7 @@
 
 <img src="https://github.com/homedepot/flop/raw/logo/doc/logo.png" width="100">
 ----
+
 flop is a Golang file operations library concentrating on safety and feature parity with
 [GNU cp](https://www.gnu.org/software/coreutils/manual/html_node/cp-invocation.html).
 Most administrators and engineers interact with GNU utilities every day, so it makes sense to utilize
