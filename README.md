@@ -18,6 +18,10 @@ cp assuming that copying from a file path to a directory path means the file sho
 This behavior must be explicitly defined in flop by passing the option AppendNameToPath, otherwise
 an error will be returned.
 
+``` 
+go get -u github.com/homedepot/flop
+```
+
 ### Usage
 Basic file copy.
 ```go
@@ -41,7 +45,7 @@ can help expose the behavior, or aid in debugging if you are generous enough to 
 ```go
 // the logger just takes a string so format your favorite logger to accept one
 import (
-	"flop"
+	"github.com/homedepot/flop"
 	"github.com/rs/zerolog"
 	zlog "github.com/rs/zerolog/log"
 	llog "github.com/sirupsen/logrus"
