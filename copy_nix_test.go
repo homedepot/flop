@@ -7,7 +7,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"io/ioutil"
 	"os"
+	"syscall"
 	"testing"
+	"time"
 )
 
 // TODO: it's difficult to create paths that we do not have access to. revisit this.
@@ -76,72 +78,72 @@ func TestIsSymlinkFailsWithRegularFile(t *testing.T) {
 	assert.False(f.isSymlink())
 }
 
-func TestPermissionsAfterCopyWithoutPreserveOptions(t *testing.T) {
-	assert := assert.New(t)
-	tests := []struct {
-		name string
-		// if dst should exist we'll create it and assign expectedDstPerms to it
-		dstShouldExist   bool
-		srcPerms         os.FileMode
-		expectedDstPerms os.FileMode
-		options          Options
-	}{
-		{
-			name:             "dst_not_exist_0655",
-			dstShouldExist:   false,
-			srcPerms:         os.FileMode(0655),
-			expectedDstPerms: os.FileMode(0655),
-		},
-		{
-			name:             "dst_not_exist_0777",
-			dstShouldExist:   false,
-			srcPerms:         os.FileMode(0777),
-			expectedDstPerms: os.FileMode(0777),
-		},
-		{
-			name:             "preserve_dst_perms_when_dst_exists_0654",
-			dstShouldExist:   true,
-			srcPerms:         os.FileMode(0655),
-			expectedDstPerms: os.FileMode(0654),
-		},
-		{
-			name:             "preserve_dst_perms_when_dst_exists_0651",
-			dstShouldExist:   true,
-			srcPerms:         os.FileMode(0655),
-			expectedDstPerms: os.FileMode(0651),
-		},
-	}
+//func TestPermissionsAfterCopyWithoutPreserveOptions(t *testing.T) {  // TODO: reuse these with preserve defaults or delete
+//	assert := assert.New(t)
+//	tests := []struct {
+//		name string
+//		// if dst should exist we'll create it and assign expectedDstPerms to it
+//		dstShouldExist   bool
+//		srcPerms         os.FileMode
+//		expectedDstPerms os.FileMode
+//		options          Options
+//	}{
+//		{
+//			name:             "dst_not_exist_0655",
+//			dstShouldExist:   false,
+//			srcPerms:         os.FileMode(0655),
+//			expectedDstPerms: os.FileMode(0655),
+//		},
+//		{
+//			name:             "dst_not_exist_0777",
+//			dstShouldExist:   false,
+//			srcPerms:         os.FileMode(0777),
+//			expectedDstPerms: os.FileMode(0777),
+//		},
+//		{
+//			name:             "preserve_dst_perms_when_dst_exists_0654",
+//			dstShouldExist:   true,
+//			srcPerms:         os.FileMode(0655),
+//			expectedDstPerms: os.FileMode(0654),
+//		},
+//		{
+//			name:             "preserve_dst_perms_when_dst_exists_0651",
+//			dstShouldExist:   true,
+//			srcPerms:         os.FileMode(0655),
+//			expectedDstPerms: os.FileMode(0651),
+//		},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			src := tmpFile()
+//			assert.Nil(os.Chmod(src, tt.srcPerms))
+//			var dst string
+//			if tt.dstShouldExist {
+//				dst = tmpFile()
+//				// set dst perms to ensure they are distinct beforehand
+//				assert.Nil(os.Chmod(dst, tt.expectedDstPerms))
+//			} else {
+//				dst = tmpFilePathUnused()
+//			}
+//
+//			// set default options
+//			tt.options.InfoLogFunc = infoLogger
+//			tt.options.DebugLogFunc = debugLogger
+//
+//			// copy
+//			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
+//
+//			// check our perms
+//			d, err := os.Stat(dst)
+//			assert.Nil(err)
+//			dstPerms := d.Mode()
+//			assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms))
+//		})
+//	}
+//}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			src := tmpFile()
-			assert.Nil(os.Chmod(src, tt.srcPerms))
-			var dst string
-			if tt.dstShouldExist {
-				dst = tmpFile()
-				// set dst perms to ensure they are distinct beforehand
-				assert.Nil(os.Chmod(dst, tt.expectedDstPerms))
-			} else {
-				dst = tmpFilePathUnused()
-			}
-
-			// set default options
-			tt.options.InfoLogFunc = infoLogger
-			tt.options.DebugLogFunc = debugLogger
-
-			// copy
-			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
-
-			// check our perms
-			d, err := os.Stat(dst)
-			assert.Nil(err)
-			dstPerms := d.Mode()
-			assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms))
-		})
-	}
-}
-
-func TestPermissionsAfterCopyWithPreserveOptions(t *testing.T) {
+func TestPreserveOptionsSetsDesiredPermissions(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
 		name             string
@@ -151,11 +153,32 @@ func TestPermissionsAfterCopyWithPreserveOptions(t *testing.T) {
 		options          Options
 	}{
 		{
-			name:             "preserve_mode_0655",
+			name:             "preserve_mode_keeps_src_file_perms",
 			srcPerms:         os.FileMode(0655),
 			initDstPerms:     os.FileMode(0644),
 			expectedDstPerms: os.FileMode(0655),
 			options:          Options{Preserve: []string{"mode"}},
+		},
+		{
+			name:             "preserve_mode_with_no_mode_set",
+			srcPerms:         os.FileMode(0655),
+			initDstPerms:     os.FileMode(0644),
+			expectedDstPerms: os.FileMode(0655),
+			options:          Options{},
+		},
+		{
+			name:             "preserve_mode_keeps_src_file_perms_when_mode_option_is_last",
+			srcPerms:         os.FileMode(0655),
+			initDstPerms:     os.FileMode(0644),
+			expectedDstPerms: os.FileMode(0655),
+			options:          Options{Preserve: []string{"timestamps", "mode"}},
+		},
+		{
+			name:             "do_not_preserve_mode_when_mode_is_not_set",
+			srcPerms:         os.FileMode(0655),
+			initDstPerms:     os.FileMode(0641),
+			expectedDstPerms: os.FileMode(0641),
+			options:          Options{Preserve: []string{"timestamps"}},
 		},
 	}
 
@@ -176,11 +199,53 @@ func TestPermissionsAfterCopyWithPreserveOptions(t *testing.T) {
 			// copy
 			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
 
-			// check our perms
+			// check the perms
 			d, err := os.Stat(dst)
 			assert.Nil(err)
 			dstPerms := d.Mode()
-			assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms))
+			assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms), "subtest: %s", tt.name)
+		})
+	}
+}
+
+func TestPreserveOptionSetsDesiredTimestamps(t *testing.T) {
+	assert := assert.New(t)
+	tests := []struct {
+		name    string
+		options Options
+	}{
+		{
+			name:    "preserve_mode_keeps_src_file_perms",
+			options: Options{Preserve: []string{"mode"}},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var src, dst string
+			{
+				d := time.Date(2000, time.January, 5, 1, 2, 3, 4, time.Local)
+				src = tmpFile()
+				dst = tmpFile()
+				assert.Nil(os.Chtimes(dst, d, d))
+			}
+
+			// set default options
+			tt.options.InfoLogFunc = infoLogger
+			tt.options.DebugLogFunc = debugLogger
+
+			// copy
+			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
+
+			// check the times
+			d, err := os.Stat(dst)
+			assert.Nil(err)
+			fmt.Println("modtime", d.ModTime())
+			a := d.Sys().(*syscall.Stat_t).Atim
+			fmt.Println("atime:", time.Unix(a.Sec, a.Nsec))
+			//assert.Nil(err)
+			//dstPerms := d.Mode()
+			//assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms), "subtest: %s", tt.name)
 		})
 	}
 }
