@@ -6,6 +6,7 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/homedepot/flop)](https://goreportcard.com/report/github.com/homedepot/flop)
 
 <img src="https://github.com/homedepot/flop/raw/logo/doc/logo.png" width="100">
+
 ----
 
 flop is a Golang file operations library concentrating on safety and feature parity with
