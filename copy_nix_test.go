@@ -1,4 +1,4 @@
-// +build linux
+// +build linux darwin
 
 package flop
 
@@ -76,7 +76,7 @@ func TestIsSymlinkFailsWithRegularFile(t *testing.T) {
 	assert.False(f.isSymlink())
 }
 
-func TestPermissionsAfterCopy(t *testing.T) {
+func TestPermissionsAfterCopyWithoutPreserveOptions(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
 		name string

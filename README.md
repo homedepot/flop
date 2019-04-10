@@ -2,10 +2,11 @@
 flop is a Golang file operations library concentrating on safety and feature parity with
 [GNU cp](https://www.gnu.org/software/coreutils/manual/html_node/cp-invocation.html).
 Most administrators and engineers interact with GNU utilities every day, so it makes sense to utilize
-that knowledge and expectations for a library that does the same operation in code.  flop strategically
-diverges from cp where it is advantageous for the programmer to explicitly define the behavior, like
-cp assuming that copying from a file path to a directory path means the file should be created inside the directory.
-This behavior must be explicitly defined in flop by passing the option AppendNameToPath, otherwise
+that knowledge and expectations for a library that does the same operations in code.
+
+flop generally tracks cp but strategically diverges from cp where it is advantageous for the programmer to explicitly
+define the behavior, like cp assuming that copying from a file path to a directory path means the file should be created
+inside the directory. This behavior must be explicitly defined in flop by passing the option AppendNameToPath, otherwise
 an error will be returned.
 
 ### Usage
@@ -24,6 +25,11 @@ options := flop.Options{
 err := flop.Copy("src_path", "dst_path", options)
 handle(err)
 ```
+
+### Operating Systems Support
+flop was built to work on *nix and Windows systems.  The behavior should be consistent across all platforms with the
+exception of permissions.  flop makes no guarantees related to permissions on Windows based systems so handle those
+yourself.
 
 ### Logging
 flop won't throw logs at you for no reason, but if you want to follow along with what's going on giving it a logger
@@ -45,6 +51,7 @@ func logDebug(msg string) {
 
 func main() {
 	zlog.Logger = zlog.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	
 	err := flop.Copy(src.Name(), dst.Name(), flop.Options{
 		InfoLogFunc: zlog.Info().Msg,  // Msg already accepts a string so we can just pass it directly
 		DebugLogFunc: logDebug,        // logrus Debug takes ...interface{} so we need to wrap it
