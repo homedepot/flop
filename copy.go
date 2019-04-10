@@ -21,8 +21,12 @@ func SimpleCopy(src, dst string) error {
 	return Copy(src, dst, Options{})
 }
 
-// compatibleOptions returns an appropriate error if options are not compatible.
-func compatibleOptions(srcFile, dstFile File, opts Options) error {
+// verify returns an appropriate error if options are not compatible or configuration is invalid.
+func verify(srcFile, dstFile File, opts Options) error {
+	if !srcFile.Exists() {
+		return errors.Wrapf(ErrFileNotExist, "src file %s", srcFile.Path)
+	}
+
 	if opts.Parents && opts.AppendNameToPath {
 		return errors.Wrapf(ErrIncompatibleOptions, "Parents and AppendNameToPath are incompatible, destination must be a directory")
 	}
@@ -52,12 +56,8 @@ func Copy(src, dst string, opts Options) (err error) {
 	opts.setLoggers()
 	srcFile, dstFile := *NewFile(filepath.Clean(src)), *NewFile(filepath.Clean(dst))
 
-	if err := compatibleOptions(srcFile, dstFile, opts); err != nil {
+	if err := verify(srcFile, dstFile, opts); err != nil {
 		return err
-	}
-
-	if !srcFile.Exists() {
-		return errors.Wrapf(ErrFileNotExist, "src file %s", srcFile.Path)
 	}
 
 	opts.logDebug("dst %s exists: %t", dstFile.Path, dstFile.Exists())
@@ -83,6 +83,7 @@ func Copy(src, dst string, opts Options) (err error) {
 		opts.Parents = false // ensure we don't keep creating parents on recursive calls
 	}
 
+	// TODO: should move this up into verify.. but it depends on opts.Parents check above
 	// copying src directory requires dst is also a directory, if exists
 	if srcFile.IsDir() && dstFile.Exists() && !dstFile.IsDir() {
 		return errors.Wrapf(ErrCannotOverwriteNonDir, "source directory %s, destination file %s", srcFile.Path, dstFile.Path)
