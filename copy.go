@@ -18,7 +18,29 @@ var numberedBackupFile = regexp.MustCompile(`^.*\.~([0-9]{1,5})~$`)
 
 // SimpleCopy copies src to dst with default Options.
 func SimpleCopy(src, dst string) error {
-	return Copy(src, dst, Options{})
+	opts := Options{}
+	opts.setLoggers() // avoid nil pointer ref for log func
+	return Copy(src, dst, defaultOptions(opts, opts.logDebug))
+}
+
+// defaultOptions sets the default for any options not set.
+func defaultOptions(opts Options, logFunc func(format string, a ...interface{})) Options {
+	// set default for Preserve
+	{
+		if len(opts.Preserve) == 0 {
+			preserveDefaults := []string{"mode", "ownership", "timestamps"}
+			logFunc("no preserve attributes given, setting to %s", preserveDefaults)
+			opts.Preserve = preserveDefaults
+		}
+		for _, given := range opts.Preserve {
+			if given == "all" {
+				preserveSupported := []string{"mode", "ownership", "timestamps"}
+				opts.Preserve = preserveSupported
+				break
+			}
+		}
+	}
+	return opts
 }
 
 // verify returns an appropriate error if options are not compatible or configuration is invalid.
@@ -35,16 +57,16 @@ func verify(srcFile, dstFile File, opts Options) error {
 	}
 
 	// ensure given values for Preserve option are valid
-	supportedPreserveVals := []string{"mode", "all"}
+	supported := []string{"mode", "ownership", "timestamps", "all"}
 	for _, v := range opts.Preserve {
 		var matched bool
-		for _, supported := range supportedPreserveVals {
-			if v == supported {
+		for _, s := range supported {
+			if v == s {
 				matched = true
 			}
 		}
 		if !matched {
-			return errors.Wrapf(ErrInvalidPreserveValue, "given value %s is not supported", v)
+			return errors.Wrapf(ErrInvalidPreserveValue, "given value '%s' is not s", v)
 		}
 	}
 
@@ -53,8 +75,10 @@ func verify(srcFile, dstFile File, opts Options) error {
 
 // Copy will copy src to dst.  Behavior is determined by the given Options.
 func Copy(src, dst string, opts Options) (err error) {
-	opts.setLoggers()
 	srcFile, dstFile := *NewFile(filepath.Clean(src)), *NewFile(filepath.Clean(dst))
+
+	opts.setLoggers()
+	opts = defaultOptions(opts, opts.logDebug)
 
 	if err := verify(srcFile, dstFile, opts); err != nil {
 		return err
