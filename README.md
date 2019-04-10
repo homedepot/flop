@@ -5,7 +5,7 @@
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/homedepot/flop)](https://goreportcard.com/report/github.com/homedepot/flop)
 
-<img src="https://github.com/homedepot/flop/raw/logo/doc/logo.png" width="100">
+<img src="https://github.com/homedepot/flop/raw/logo/doc/logo.png" width="200">
 
 ----
 
