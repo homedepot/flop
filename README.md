@@ -3,6 +3,8 @@
 [![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
 [![Go Report Card](https://goreportcard.com/badge/github.com/homedepot/flop)](https://goreportcard.com/report/github.com/homedepot/flop)
 
+![flop](doc/logo.png =250x)
+
 # flop
 flop is a Golang file operations library concentrating on safety and feature parity with
 [GNU cp](https://www.gnu.org/software/coreutils/manual/html_node/cp-invocation.html).
