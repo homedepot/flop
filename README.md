@@ -1,5 +1,16 @@
 # flop
 flop is a Go file operations library concentrating on safety and feature parity with
+
+[![GoDoc](https://godoc.org/github.com/homedepot/flop?status.svg)](https://godoc.org/github.com/homedepot/flop)
+[![MIT license](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Mentioned in Awesome Go](https://awesome.re/mentioned-badge.svg)](https://github.com/avelino/awesome-go)
+[![Go Report Card](https://goreportcard.com/badge/github.com/homedepot/flop)](https://goreportcard.com/report/github.com/homedepot/flop)
+
+<img src="https://github.com/homedepot/flop/raw/master/doc/logo.png" width="200">
+
+----
+
+flop is a Golang file operations library concentrating on safety and feature parity with
 [GNU cp](https://www.gnu.org/software/coreutils/manual/html_node/cp-invocation.html).
 Most administrators and engineers interact with GNU utilities every day, so it makes sense to utilize
 that knowledge and expectations for a library that does the same operations in code.
@@ -9,6 +20,10 @@ define the behavior. For example cp assumes that copying a file to a directory m
 inside the directory. This behavior must be explicitly defined in flop by passing the option AppendNameToPath, otherwise
 an error will be returned.
 
+``` 
+go get -u github.com/homedepot/flop
+```
+
 ### Usage
 Basic file copy.
 ```go
@@ -16,7 +31,7 @@ err := flop.SimpleCopy("src_path", "dst_path")
 handle(err)
 ```
 
-Advanced file copy with options.
+Advanced file copy with [options](https://godoc.org/github.com/homedepot/flop#Options).
 ```go
 options := flop.Options{
     Recursive: true,
@@ -38,7 +53,7 @@ can help expose the behavior, or aid in debugging if you are generous enough to 
 ```go
 // the logger just takes a string so format your favorite logger to accept one
 import (
-	"flop"
+	"github.com/homedepot/flop"
 	"github.com/rs/zerolog"
 	zlog "github.com/rs/zerolog/log"
 	llog "github.com/sirupsen/logrus"
@@ -52,7 +67,6 @@ func logDebug(msg string) {
 
 func main() {
 	zlog.Logger = zlog.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	
 	err := flop.Copy(src.Name(), dst.Name(), flop.Options{
 		InfoLogFunc: zlog.Info().Msg,  // Msg already accepts a string so we can just pass it directly
 		DebugLogFunc: logDebug,        // logrus Debug takes ...interface{} so we need to wrap it
