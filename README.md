@@ -1,11 +1,11 @@
 # flop
-flop is a Golang file operations library concentrating on safety and feature parity with
+flop is a Go file operations library concentrating on safety and feature parity with
 [GNU cp](https://www.gnu.org/software/coreutils/manual/html_node/cp-invocation.html).
 Most administrators and engineers interact with GNU utilities every day, so it makes sense to utilize
 that knowledge and expectations for a library that does the same operations in code.
 
 flop generally tracks cp but strategically diverges from cp where it is advantageous for the programmer to explicitly
-define the behavior, like cp assuming that copying from a file path to a directory path means the file should be created
+define the behavior. For example cp assumes that copying a file to a directory means the file should be created
 inside the directory. This behavior must be explicitly defined in flop by passing the option AppendNameToPath, otherwise
 an error will be returned.
 
