@@ -62,20 +62,8 @@ func (o *Options) logInfo(format string, a ...interface{}) {
 	o.InfoLogFunc(fmt.Sprintf(format, a...))
 }
 
-// Preserve the specified attributes. Accepted values are:
-//   - "mode"        preserve the file mode bits and access control lists
-//   - "ownership"   preserve the owner and group if permissions allow
-//   - "timestamps"  preserve times of last access and last modification, when possible
-//   - future support: "context"  preserve SELinux contexts
-//   - future support: "links"    preserve in the destination files any links between corresponding source files
-//   - future support: "xattr"    preserve extended attributes of the file
-//   - "all"         preserve all supported attributes
-//
-//
-// Not setting Preserve at all is equivalent to []string{"mode"}
-
-// PreserveAttrs stores Options.Preserve attributes.  Using Preserve with no attributes is equivalent to setting
-// Mode, Ownership and Timestamps.
+// PreserveAttrs defines attributes which should be preserved when copying files.  Using Preserve with no attributes
+// is equivalent to setting Mode, Ownership and Timestamps.  Set None to avoid defaults.
 type PreserveAttrs struct {
 	// All marks all of the attributes here for preservation.
 	All bool

@@ -24,6 +24,7 @@ func setAttributes(srcFile File, dstFile File, opts Options) error {
 		// get src times
 		fileInfo, err := os.Stat(srcFile.Path)
 		if err != nil {
+			opts.logInfo(ErrCannotStatFile.Error(), "src file %s", srcFile.Path)
 			return err
 		}
 		statT := fileInfo.Sys().(*syscall.Stat_t)
@@ -32,6 +33,22 @@ func setAttributes(srcFile File, dstFile File, opts Options) error {
 
 		// set dst times
 		os.Chtimes(dstFile.Path, srcATime, srcMTime)
+	}
+
+	if opts.Preserve.ownership {
+		// get src ownership
+		fileInfo, err := os.Stat(srcFile.Path)
+		if err != nil {
+			opts.logInfo(ErrCannotStatFile.Error(), "src file %s", srcFile.Path)
+			return err
+		}
+		statT := fileInfo.Sys().(*syscall.Stat_t)
+
+		// set dst ownership
+		if err := os.Chown(dstFile.Path, int(statT.Uid), int(statT.Gid)); err != nil {
+			opts.logInfo(ErrCannotChownFile.Error(), "dst file %s, if this is a permission error consider setting PreserveAttr None to avoid setting Ownership", dstFile.Path)
+			return err
+		}
 	}
 	return nil
 }

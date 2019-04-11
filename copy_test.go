@@ -360,8 +360,6 @@ func TestCopyingFileWithParentsFlag(t *testing.T) {
 				tt.options.InfoLogFunc = infoLogger
 			}
 
-			a, _ := filepath.Abs(dst)
-			fmt.Println("ABS:", a) // FIXME: testing
 			err := Copy(src, dst, tt.options)
 
 			// check the err from copy

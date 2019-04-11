@@ -78,71 +78,6 @@ func TestIsSymlinkFailsWithRegularFile(t *testing.T) {
 	assert.False(f.isSymlink())
 }
 
-//func TestPermissionsAfterCopyWithoutPreserveOptions(t *testing.T) {  // TODO: reuse these with preserve defaults or delete
-//	assert := assert.New(t)
-//	tests := []struct {
-//		name string
-//		// if dst should exist we'll create it and assign expectedDstPerms to it
-//		dstShouldExist   bool
-//		srcPerms         os.FileMode
-//		expectedDstPerms os.FileMode
-//		options          Options
-//	}{
-//		{
-//			name:             "dst_not_exist_0655",
-//			dstShouldExist:   false,
-//			srcPerms:         os.FileMode(0655),
-//			expectedDstPerms: os.FileMode(0655),
-//		},
-//		{
-//			name:             "dst_not_exist_0777",
-//			dstShouldExist:   false,
-//			srcPerms:         os.FileMode(0777),
-//			expectedDstPerms: os.FileMode(0777),
-//		},
-//		{
-//			name:             "preserve_dst_perms_when_dst_exists_0654",
-//			dstShouldExist:   true,
-//			srcPerms:         os.FileMode(0655),
-//			expectedDstPerms: os.FileMode(0654),
-//		},
-//		{
-//			name:             "preserve_dst_perms_when_dst_exists_0651",
-//			dstShouldExist:   true,
-//			srcPerms:         os.FileMode(0655),
-//			expectedDstPerms: os.FileMode(0651),
-//		},
-//	}
-//
-//	for _, tt := range tests {
-//		t.Run(tt.name, func(t *testing.T) {
-//			src := tmpFile()
-//			assert.Nil(os.Chmod(src, tt.srcPerms))
-//			var dst string
-//			if tt.dstShouldExist {
-//				dst = tmpFile()
-//				// set dst perms to ensure they are distinct beforehand
-//				assert.Nil(os.Chmod(dst, tt.expectedDstPerms))
-//			} else {
-//				dst = tmpFilePathUnused()
-//			}
-//
-//			// set default options
-//			tt.options.InfoLogFunc = infoLogger
-//			tt.options.DebugLogFunc = debugLogger
-//
-//			// copy
-//			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
-//
-//			// check our perms
-//			d, err := os.Stat(dst)
-//			assert.Nil(err)
-//			dstPerms := d.Mode()
-//			assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms))
-//		})
-//	}
-//}
-
 func TestPreserveOptionsSetsDesiredPermissions(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
@@ -160,14 +95,14 @@ func TestPreserveOptionsSetsDesiredPermissions(t *testing.T) {
 			options:          Options{Preserve: PreserveAttrs{Mode: true}},
 		},
 		{
-			name:             "preserve_mode_with_no_mode_set",
+			name:             "no_preserve_attrs_set_does_not_change_mode",
 			srcPerms:         os.FileMode(0655),
 			initDstPerms:     os.FileMode(0644),
 			expectedDstPerms: os.FileMode(0655),
 			options:          Options{},
 		},
 		{
-			name:             "do_not_preserve_mode_when_mode_is_not_set",
+			name:             "non_mode_preserve_attr_set_does_not_change_mode",
 			srcPerms:         os.FileMode(0655),
 			initDstPerms:     os.FileMode(0641),
 			expectedDstPerms: os.FileMode(0641),
@@ -205,13 +140,27 @@ func TestPreserveOptionSetsDesiredTimestamps(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
 		name                      string
-		options                   Options
+		attrs                     PreserveAttrs
 		dstTimeShouldMatchSrcTime bool
 	}{
 		{
-			name:                      "preserve_mode_keeps_src_file_perms",
-			options:                   Options{Preserve: PreserveAttrs{Timestamps: true}},
+			name:                      "timestamps_attr_keeps_src_file_perms",
+			attrs:                     PreserveAttrs{Timestamps: true},
 			dstTimeShouldMatchSrcTime: true,
+		},
+		{
+			name:                      "no_attrs_given_keeps_src_file_perms",
+			dstTimeShouldMatchSrcTime: true,
+		},
+		{
+			name:                      "non_mode_attr_set_does_not_preserve_timestamps",
+			dstTimeShouldMatchSrcTime: false,
+			attrs:                     PreserveAttrs{ownership: true},
+		},
+		{
+			name:                      "none_attr_does_not_preserve_timestamps",
+			dstTimeShouldMatchSrcTime: false,
+			attrs:                     PreserveAttrs{None: true},
 		},
 	}
 
@@ -228,11 +177,14 @@ func TestPreserveOptionSetsDesiredTimestamps(t *testing.T) {
 			}
 
 			// set default options
-			tt.options.InfoLogFunc = infoLogger
-			tt.options.DebugLogFunc = debugLogger
+			opts := Options{
+				InfoLogFunc:  infoLogger,
+				DebugLogFunc: debugLogger,
+				Preserve:     tt.attrs,
+			}
 
 			// copy
-			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
+			assert.Nil(Copy(src, dst, opts), "failure on: %s", tt.name)
 
 			var srcATime, dstATime time.Time // access times
 			var srcMTime, dstMTime time.Time // mod times
@@ -263,6 +215,77 @@ func TestPreserveOptionSetsDesiredTimestamps(t *testing.T) {
 		})
 	}
 }
+
+// TODO: we make too many assumptions, or take too many liberties, to properly assign and test ownership. revisit this.
+//func TestPreserveOptionSetsDesiredOwnership(t *testing.T) {
+//	assert := assert.New(t)
+//	tests := []struct {
+//		name                    string
+//		attrs                 PreserveAttrs
+//		dstOwnShouldMatchSrcOwn bool
+//	}{
+//		{
+//			name:    "ownership_attr_keeps_ownership",
+//			attrs: PreserveAttrs{ownership: true},
+//			dstOwnShouldMatchSrcOwn: true,
+//		},
+//		//{
+//		//	name:    "no_ownership_attr_does_not_keep_ownership",
+//		//	attrs: PreserveAttrs{ownership: false},
+//		//	dstOwnShouldMatchSrcOwn: false,
+//		//},
+//	}
+//
+//	for _, tt := range tests {
+//		t.Run(tt.name, func(t *testing.T) {
+//			var src, dst string
+//			{
+//				src = tmpFile()
+//				dst = tmpFile()
+//				defer os.RemoveAll(src)
+//				defer os.RemoveAll(dst)
+//				err := os.Chown(dst, 111, 111)
+//				assert.Nil(err, "unable to chown, err: '%s'", err)
+//			}
+//
+//			// set default options
+//			opts := Options{
+//				InfoLogFunc:  infoLogger,
+//				DebugLogFunc: debugLogger,
+//				Preserve:     tt.attrs,
+//			}
+//
+//			// copy
+//			assert.Nil(Copy(src, dst, opts), "failure on: %s", tt.name)
+//
+//			// get ownership
+//			var srcUid, dstUid, srcGid, dstGid uint32
+//			{
+//				srcFileInfo, err := os.Stat(src)
+//				assert.Nil(err)
+//				statT := srcFileInfo.Sys().(*syscall.Stat_t)
+//				srcUid = statT.Uid
+//				srcGid = statT.Gid
+//
+//				dstFileInfo, err := os.Stat(dst)
+//				assert.Nil(err)
+//				statT = dstFileInfo.Sys().(*syscall.Stat_t)
+//				dstUid = statT.Uid
+//				dstGid = statT.Gid
+//			}
+//
+//			// check ownership
+//			if tt.dstOwnShouldMatchSrcOwn {
+//				assert.Equal(111, int(dstUid))
+//				//assert.Equal(srcUid, dstUid)
+//				//assert.Equal(srcGid, dstGid)
+//			} else {
+//				assert.NotEqual(srcUid, dstUid)
+//				assert.NotEqual(srcGid, dstGid)
+//			}
+//		})
+//	}
+//}
 
 func TestCopyingSymLinks(t *testing.T) {
 	assert := assert.New(t)
