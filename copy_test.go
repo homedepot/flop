@@ -11,7 +11,7 @@ import (
 
 // debug will perform advanced logging if set to true
 // set to false to keep test results more terse
-const debug = true
+const debug = false
 
 func TestFileExists(t *testing.T) {
 	assert := assert.New(t)

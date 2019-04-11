@@ -3,42 +3,35 @@
 package flop
 
 import (
-	"github.com/pkg/errors"
 	"os"
+	"syscall"
+	"time"
 )
 
-// ensurePermissions will set file level permissions on dst based on options and other criteria.
-func ensurePermissions(dstFile File, srcMode os.FileMode, opts Options) error {
-	var mode os.FileMode
-	if fi, err := os.Stat(dstFile.Path); err != nil {
-		return err
-	} else {
-		mode = fi.Mode()
+// setAttributes will set file level permissions and attributes on dst based on Preserve options.
+func setAttributes(srcFile File, dstFile File, opts Options) error {
+	// set mode
+	if opts.Preserve.Mode {
+		mode := srcFile.Mode()
+		opts.logDebug("setting dst %s to src permissions %s", dstFile.Path, mode)
+		if err := os.Chmod(dstFile.Path, mode); err != nil {
+			return err
+		}
 	}
 
-	if dstFile.Exists() {
-		if mode == dstFile.Mode() {
-			opts.logDebug("existing dst %s permissions %s are unchanged", dstFile.Path, mode)
-			return nil
-		}
-
-		// make sure dst perms are set to their original value
-		opts.logDebug("changing dst %s permissions to %s", dstFile.Path, dstFile.Mode())
-		err := os.Chmod(dstFile.Path, dstFile.Mode())
+	// set timestamps
+	if opts.Preserve.Timestamps {
+		// get src times
+		fileInfo, err := os.Stat(srcFile.Path)
 		if err != nil {
-			return errors.Wrapf(ErrCannotChmodFile, "destination file %s: %s", dstFile.Path, err)
+			return err
 		}
-	} else {
-		if mode == srcMode {
-			opts.logDebug("dst %s permissions %s already match src perms", dstFile.Path, mode)
-		}
+		statT := fileInfo.Sys().(*syscall.Stat_t)
+		srcATime := time.Unix(statT.Atim.Sec, statT.Atim.Nsec)
+		srcMTime := time.Unix(statT.Mtim.Sec, statT.Mtim.Nsec)
 
-		// make sure dst perms are set to that of src
-		opts.logDebug("changing dst %s permissions to %s", dstFile.Path, srcMode)
-		err := os.Chmod(dstFile.Path, srcMode)
-		if err != nil {
-			return errors.Wrapf(ErrCannotChmodFile, "destination file %s: %s", dstFile.Path, err)
-		}
+		// set dst times
+		os.Chtimes(dstFile.Path, srcATime, srcMTime)
 	}
 	return nil
 }

@@ -13,3 +13,7 @@
 
 # IDE Files
 .idea
+
+# test directory
+cp_test
+

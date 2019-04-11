@@ -1,6 +1,8 @@
 package flop
 
-import "fmt"
+import (
+	"fmt"
+)
 
 // Options directly represent command line flags associated with GNU file operations.
 type Options struct {
@@ -30,17 +32,8 @@ type Options struct {
 	// Parents will create source directories in dst if they do not already exist. ErrWithParentsDstMustBeDir
 	// is returned is destination is not a directory.
 	Parents bool
-	// Preserve the specified attributes.
-	// accepted slice values are:
-	//   - future support: "default"     equivalent to []string{"mode", "ownership", "timestamps"}
-	//   - "mode"        preserve the file mode bits and access control lists
-	//   - future support: "ownership"   preserve the owner and group if permissions allow
-	//   - future support: "timestamps"  preserve times of last access and last modification, when possible
-	//   - future support: "context"  preserve SELinux contexts
-	//   - future support: "links"    this
-	//   - future support: "xattr"    preserve extended attributes of the file
-	//   - "all"         preserve all supported attributes
-	Preserve []string
+	// Preserve attributes like mode and timestamps.  Reference PreserveAttrs for details.
+	Preserve PreserveAttrs
 	// Recursive will recurse through sub directories if set true.
 	Recursive bool
 	// InfoLogFunc will, if defined, handle logging info messages.
@@ -67,4 +60,70 @@ func (o *Options) logDebug(format string, a ...interface{}) {
 // logInfo will log to the InfoLogFunc.
 func (o *Options) logInfo(format string, a ...interface{}) {
 	o.InfoLogFunc(fmt.Sprintf(format, a...))
+}
+
+// Preserve the specified attributes. Accepted values are:
+//   - "mode"        preserve the file mode bits and access control lists
+//   - "ownership"   preserve the owner and group if permissions allow
+//   - "timestamps"  preserve times of last access and last modification, when possible
+//   - future support: "context"  preserve SELinux contexts
+//   - future support: "links"    preserve in the destination files any links between corresponding source files
+//   - future support: "xattr"    preserve extended attributes of the file
+//   - "all"         preserve all supported attributes
+//
+//
+// Not setting Preserve at all is equivalent to []string{"mode"}
+
+// PreserveAttrs stores Options.Preserve attributes.  Using Preserve with no attributes is equivalent to setting
+// Mode, Ownership and Timestamps.
+type PreserveAttrs struct {
+	// All marks all of the attributes here for preservation.
+	All bool
+	// None will explicitly ignore preserving any attributes.
+	None bool
+	// Mode preserves the file mode bits.
+	Mode bool // TODO: implement the 'and access control lists' part of this attribute, and add back to description.
+	// ownership preserves the owner and group if permissions allow.
+	ownership bool // future support
+	// Timestamps preserves times of last access and last modification, when possible.
+	Timestamps bool
+	// context preserves SELinux contexts.
+	context bool // future support
+	// links preserves in the destination files any links between corresponding source files.
+	links bool // future support
+	// xattr preserves extended attributes of the file.
+	xattr bool // future support
+}
+
+// undefined returns true when none of the attributes have been set.
+func (a *PreserveAttrs) undefined() bool {
+	if a.All == false &&
+		a.None == false &&
+		a.Mode == false &&
+		a.ownership == false &&
+		a.Timestamps == false &&
+		a.context == false &&
+		a.links == false &&
+		a.xattr == false {
+		return true
+	}
+	return false
+}
+
+// setDefaults marks the default preserve attributes as true.
+func (a *PreserveAttrs) setDefaults() {
+	a.Mode = true
+	a.ownership = true
+	a.Timestamps = true
+}
+
+// setAll marks all preserve attributes as true, save None.
+func (a *PreserveAttrs) setAll() {
+	a.All = true
+	a.Mode = true
+	a.ownership = true
+	a.Timestamps = true
+	a.context = true
+	a.links = true
+	a.xattr = true
 }

@@ -157,7 +157,7 @@ func TestPreserveOptionsSetsDesiredPermissions(t *testing.T) {
 			srcPerms:         os.FileMode(0655),
 			initDstPerms:     os.FileMode(0644),
 			expectedDstPerms: os.FileMode(0655),
-			options:          Options{Preserve: []string{"mode"}},
+			options:          Options{Preserve: PreserveAttrs{Mode: true}},
 		},
 		{
 			name:             "preserve_mode_with_no_mode_set",
@@ -167,18 +167,11 @@ func TestPreserveOptionsSetsDesiredPermissions(t *testing.T) {
 			options:          Options{},
 		},
 		{
-			name:             "preserve_mode_keeps_src_file_perms_when_mode_option_is_last",
-			srcPerms:         os.FileMode(0655),
-			initDstPerms:     os.FileMode(0644),
-			expectedDstPerms: os.FileMode(0655),
-			options:          Options{Preserve: []string{"timestamps", "mode"}},
-		},
-		{
 			name:             "do_not_preserve_mode_when_mode_is_not_set",
 			srcPerms:         os.FileMode(0655),
 			initDstPerms:     os.FileMode(0641),
 			expectedDstPerms: os.FileMode(0641),
-			options:          Options{Preserve: []string{"timestamps"}},
+			options:          Options{Preserve: PreserveAttrs{Timestamps: true}},
 		},
 	}
 
@@ -211,12 +204,14 @@ func TestPreserveOptionsSetsDesiredPermissions(t *testing.T) {
 func TestPreserveOptionSetsDesiredTimestamps(t *testing.T) {
 	assert := assert.New(t)
 	tests := []struct {
-		name    string
-		options Options
+		name                      string
+		options                   Options
+		dstTimeShouldMatchSrcTime bool
 	}{
 		{
-			name:    "preserve_mode_keeps_src_file_perms",
-			options: Options{Preserve: []string{"mode"}},
+			name:                      "preserve_mode_keeps_src_file_perms",
+			options:                   Options{Preserve: PreserveAttrs{Timestamps: true}},
+			dstTimeShouldMatchSrcTime: true,
 		},
 	}
 
@@ -227,6 +222,8 @@ func TestPreserveOptionSetsDesiredTimestamps(t *testing.T) {
 				d := time.Date(2000, time.January, 5, 1, 2, 3, 4, time.Local)
 				src = tmpFile()
 				dst = tmpFile()
+				defer os.RemoveAll(src)
+				defer os.RemoveAll(dst)
 				assert.Nil(os.Chtimes(dst, d, d))
 			}
 
@@ -237,44 +234,31 @@ func TestPreserveOptionSetsDesiredTimestamps(t *testing.T) {
 			// copy
 			assert.Nil(Copy(src, dst, tt.options), "failure on: %s", tt.name)
 
-			// check the times
-			d, err := os.Stat(dst)
-			assert.Nil(err)
-			fmt.Println("modtime", d.ModTime())
-			a := d.Sys().(*syscall.Stat_t).Atim
-			fmt.Println("atime:", time.Unix(a.Sec, a.Nsec))
-			//assert.Nil(err)
-			//dstPerms := d.Mode()
-			//assert.Equal(fmt.Sprint(tt.expectedDstPerms), fmt.Sprint(dstPerms), "subtest: %s", tt.name)
-		})
-	}
-}
-
-func TestPreserveOptionErrors(t *testing.T) {
-	assert := assert.New(t)
-	tests := []struct {
-		preserveValues       []string
-		errSubstringExpected string
-		// since we give the bad value in the error, ensure we are giving the correct one
-		badValExpected string
-	}{
-		{[]string{"mode"}, "", ""},
-		{[]string{"all"}, "", ""},
-		{[]string{"all", "mode"}, "", ""}, // only "all" will apply, but still a valid entry
-		{[]string{"modes"}, ErrInvalidPreserveValue.Error(), "modes"},
-		{[]string{"mode", "invalid"}, ErrInvalidPreserveValue.Error(), "invalid"},
-		{[]string{"invalid", "mode"}, ErrInvalidPreserveValue.Error(), "invalid"},
-	}
-
-	for _, tt := range tests {
-		t.Run(fmt.Sprintf("%s", tt.preserveValues), func(t *testing.T) {
-			src, dst := tmpFile(), tmpFile()
-			err := Copy(src, dst, Options{Preserve: tt.preserveValues})
-			if len(tt.errSubstringExpected) > 0 {
-				assert.True(errContains(err, tt.errSubstringExpected), fmt.Sprintf("err '%s' does not contain '%s'", err, tt.errSubstringExpected))
-				assert.True(errContains(err, tt.badValExpected))
-			} else {
+			var srcATime, dstATime time.Time // access times
+			var srcMTime, dstMTime time.Time // mod times
+			{
+				// get src times
+				srcFileInfo, err := os.Stat(src)
 				assert.Nil(err)
+				srcStatT := srcFileInfo.Sys().(*syscall.Stat_t)
+				srcATime = time.Unix(srcStatT.Atim.Sec, srcStatT.Atim.Nsec)
+				srcMTime = time.Unix(srcStatT.Mtim.Sec, srcStatT.Mtim.Nsec)
+
+				// get dst times
+				dstFileInfo, err := os.Stat(dst)
+				assert.Nil(err)
+				dstStatT := dstFileInfo.Sys().(*syscall.Stat_t)
+				dstATime = time.Unix(dstStatT.Atim.Sec, dstStatT.Atim.Nsec)
+				dstMTime = time.Unix(dstStatT.Mtim.Sec, dstStatT.Mtim.Nsec)
+			}
+
+			// check the times
+			if tt.dstTimeShouldMatchSrcTime {
+				assert.Equal(srcATime, dstATime)
+				assert.Equal(srcMTime, dstMTime)
+			} else {
+				assert.NotEqual(srcATime, dstATime)
+				assert.NotEqual(srcMTime, dstMTime)
 			}
 		})
 	}
@@ -283,6 +267,7 @@ func TestPreserveOptionErrors(t *testing.T) {
 func TestCopyingSymLinks(t *testing.T) {
 	assert := assert.New(t)
 	src := tmpFile()
+	defer os.RemoveAll(src)
 	content := []byte("foo")
 	assert.Nil(ioutil.WriteFile(src, content, 0655))
 	srcSym := tmpFilePathUnused()
@@ -327,6 +312,9 @@ func TestCreatingHardLinksWithLinkOpt(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			defer os.RemoveAll(tt.src)
+			defer os.RemoveAll(tt.dst)
+
 			content := []byte("foo")
 			assert.Nil(ioutil.WriteFile(tt.src, content, 0655))
 

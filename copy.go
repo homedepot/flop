@@ -25,21 +25,13 @@ func SimpleCopy(src, dst string) error {
 
 // defaultOptions sets the default for any options not set.
 func defaultOptions(opts Options, logFunc func(format string, a ...interface{})) Options {
-	// set default for Preserve
-	{
-		if len(opts.Preserve) == 0 {
-			preserveDefaults := []string{"mode", "ownership", "timestamps"}
-			logFunc("no preserve attributes given, setting to %s", preserveDefaults)
-			opts.Preserve = preserveDefaults
-		}
-		for _, given := range opts.Preserve {
-			if given == "all" {
-				preserveSupported := []string{"mode", "ownership", "timestamps"}
-				opts.Preserve = preserveSupported
-				break
-			}
-		}
+	if opts.Preserve.All {
+		opts.Preserve.setAll()
+	} else if opts.Preserve.undefined() {
+		logFunc("no preserve attributes given, setting defaults")
+		opts.Preserve.setDefaults()
 	}
+
 	return opts
 }
 
@@ -54,20 +46,6 @@ func verify(srcFile, dstFile File, opts Options) error {
 	}
 	if opts.Parents && !dstFile.IsDir() {
 		return ErrWithParentsDstMustBeDir
-	}
-
-	// ensure given values for Preserve option are valid
-	supported := []string{"mode", "ownership", "timestamps", "all"}
-	for _, v := range opts.Preserve {
-		var matched bool
-		for _, s := range supported {
-			if v == s {
-				matched = true
-			}
-		}
-		if !matched {
-			return errors.Wrapf(ErrInvalidPreserveValue, "given value '%s' is not s", v)
-		}
 	}
 
 	return nil
@@ -261,7 +239,7 @@ func copyFile(srcFile, dstFile File, opts Options) (err error) {
 		}
 	}
 
-	return ensurePermissions(dstFile, srcFile.Mode(), opts)
+	return setAttributes(srcFile, dstFile, opts)
 }
 
 // backupFile will create a backup of the file using the chosen control method.  See Options.Backup.
