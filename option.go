@@ -28,7 +28,7 @@ type Options struct {
 	// NoClobber will not let an existing file be overwritten.
 	NoClobber bool
 	// Parents will create source directories in dst if they do not already exist. ErrWithParentsDstMustBeDir
-	// is returned is destination is not a directory.
+	// is returned if destination is not a directory.
 	Parents bool
 	// Recursive will recurse through sub directories if set true.
 	Recursive bool

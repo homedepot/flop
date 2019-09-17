@@ -30,9 +30,7 @@ type File struct {
 
 // NewFile creates a new File.
 func NewFile(path string) *File {
-	return &File{
-		Path: path,
-	}
+	return &File{Path: path}
 }
 
 // setInfo will collect information about a File and populate the necessary fields.
@@ -278,6 +276,11 @@ func copyFile(srcFile, dstFile *File, opts Options) (err error) {
 		if err != nil {
 			return errors.Wrapf(ErrCannotOpenOrCreateDstFile, "destination file %s: %s", dstFile.Path, err)
 		}
+		defer func() {
+			if closeErr := dstFD.Close(); closeErr != nil {
+				err = closeErr
+			}
+		}()
 
 		opts.logInfo("copying src file %s to dst file %s", srcFD.Name(), dstFD.Name())
 		if _, err = io.Copy(dstFD, srcFD); err != nil {
