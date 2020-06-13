@@ -4,19 +4,20 @@ package flop
 
 import (
 	"fmt"
-	"github.com/pkg/errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"regexp"
 	"strconv"
+
+	"github.com/pkg/errors"
 )
 
 // numberedBackupFile matches files that looks like file.ext.~1~ and uses a capture group to grab the number
 var numberedBackupFile = regexp.MustCompile(`^.*\.~([0-9]{1,5})~$`)
 
-// File describes a file and associated options for operations on the file.
+// File describes a file on the filesystem.
 type File struct {
 	// Path is the path to the src file.
 	Path string
