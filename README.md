@@ -29,7 +29,7 @@ err := flop.SimpleCopy("src_path", "dst_path")
 handle(err)
 ```
 
-Advanced file copy with [options](https://godoc.org/github.com/homedepot/flop#Options).
+Advanced file copy with [options](https://pkg.go.dev/github.com/homedepot/flop?tab=doc#Options).
 ```go
 options := flop.Options{
     Recursive: true,
