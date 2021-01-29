@@ -9,27 +9,31 @@
 
 ----
 
-flop is a Golang file operations library concentrating on safety and feature parity with
+flop aims to make copying files easier in Go, and is modeled after
 [GNU cp](https://www.gnu.org/software/coreutils/manual/html_node/cp-invocation.html).
 Most administrators and engineers interact with GNU utilities every day, so it makes sense to utilize
-that knowledge and expectations for a library that does the same operation in code.  flop strategically
-diverges from cp where it is advantageous for the programmer to explicitly define the behavior, like
-cp assuming that copying from a file path to a directory path means the file should be created inside the directory.
-This behavior must be explicitly defined in flop by passing the option AppendNameToPath, otherwise
-an error will be returned.
+that knowledge and expectations for a library that does the same operation in code.
 
-``` 
+flop strategically diverges from cp where it is advantageous for the programmer to explicitly define the
+behavior, like cp assuming that copying from a file path to a directory path means the file should be
+created inside the directory. This behavior must be explicitly defined in flop by passing the option
+AppendNameToPath, otherwise an error will be returned.
+
+```BASH
 go get -u github.com/homedepot/flop
 ```
 
-### Usage
+## Usage
+
 Basic file copy.
+
 ```go
 err := flop.SimpleCopy("src_path", "dst_path")
 handle(err)
 ```
 
 Advanced file copy with [options](https://pkg.go.dev/github.com/homedepot/flop?tab=doc#Options).
+
 ```go
 options := flop.Options{
     Recursive: true,
@@ -39,9 +43,11 @@ err := flop.Copy("src_path", "dst_path", options)
 handle(err)
 ```
 
-### Logging
+## Logging
+
 flop won't throw logs at you for no reason, but if you want to follow along with what's going on giving it a logger
 can help expose the behavior, or aid in debugging if you are generous enough to contribute.
+
 ```go
 // the logger just takes a string so format your favorite logger to accept one
 import (
